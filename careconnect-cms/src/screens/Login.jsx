@@ -9,7 +9,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const base = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+    const base = import.meta.env.VITE_BASE_URL || "https://careconnect.unikloh.icu";
 
     const submit = async (e) => {
         e.preventDefault();

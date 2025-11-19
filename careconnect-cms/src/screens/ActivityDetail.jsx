@@ -22,7 +22,7 @@ export default function ActivityDetail() {
     const [showImageModal, setShowImageModal] = useState(false);
     const [newImageUrl, setNewImageUrl] = useState("");
 
-    const base = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+    const base = import.meta.env.VITE_BASE_URL || "https://careconnect.unikloh.icu";
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");

@@ -27,7 +27,7 @@ export default function EditActivity() {
         targetMoney: 0,
     });
 
-    const base = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+    const base = import.meta.env.VITE_BASE_URL || "https://careconnect.unikloh.icu";
 
     useEffect(() => {
         // Check if user is logged in

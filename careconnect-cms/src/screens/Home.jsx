@@ -9,7 +9,7 @@ export default function Home() {
     const [error, setError] = useState("");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-    const base = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+    const base = import.meta.env.VITE_BASE_URL || "https://careconnect.unikloh.icu";
 
     useEffect(() => {
         // Check if user is logged in
