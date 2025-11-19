@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Toastify from "toastify-js";
 import "toastify-js/src/toastify.css";
 import MapPicker from "../components/MapPicker";
 
-export default function CreateActivity() {
+export default function EditActivity() {
     const navigate = useNavigate();
+    const { id } = useParams();
     const [loading, setLoading] = useState(false);
+    const [fetchLoading, setFetchLoading] = useState(true);
     const [error, setError] = useState("");
     const [showMapPicker, setShowMapPicker] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
@@ -32,8 +34,42 @@ export default function CreateActivity() {
         const token = localStorage.getItem("access_token");
         if (!token) {
             navigate("/login");
+            return;
         }
-    }, [navigate]);
+        // Fetch activity data
+        fetchActivity();
+    }, [navigate, id]);
+
+    const fetchActivity = async () => {
+        try {
+            const res = await axios.get(`${base}/api/activities/${id}`);
+            const activity = res.data.data || res.data;
+            
+            // Pre-fill form with existing data
+            setFormData({
+                title: activity.title || "",
+                description: activity.description || "",
+                location: {
+                    name: typeof activity.location === 'string' ? activity.location : activity.location?.name || "",
+                    lat: activity.location?.lat || null,
+                    lng: activity.location?.lng || null
+                },
+                images: activity.images || [],
+                category: activity.category || "",
+                targetMoney: activity.targetMoney || 0,
+            });
+
+            // Show map if location has coordinates
+            if (activity.location?.lat && activity.location?.lng) {
+                setShowMap(true);
+            }
+        } catch (err) {
+            console.error("Failed to fetch activity:", err);
+            setError("Failed to load activity. Please try again.");
+        } finally {
+            setFetchLoading(false);
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -48,16 +84,11 @@ export default function CreateActivity() {
     };
 
     const handleLocationChange = (location) => {
-        console.log("📍 Location selected from MapPicker:", location);
         setFormData(prev => ({
             ...prev,
             location: location
         }));
         setShowMapPicker(false);
-        console.log("📍 FormData after location change:", {
-            ...formData,
-            location: location
-        });
     };
 
     const handleImageAdd = () => {
@@ -105,105 +136,77 @@ export default function CreateActivity() {
         setLoading(true);
         try {
             const token = localStorage.getItem("access_token");
-            // console.log("🔍 FormData sebelum payload:", formData.location);
-            // return 
             
             // Prepare payload matching backend structure
             const payload = {
                 title: formData.title,
                 description: formData.description,
                 location: {
-                    name: typeof formData.location.name === 'string' 
-                        ? formData.location.name || "Location TBA"
-                        : formData.location.name?.name || "Location TBA",
-                    lat: typeof formData.location.lat === 'number' 
-                        ? formData.location.lat 
-                        : (formData.location.lat?.lat || null),
-                    lng: typeof formData.location.lng === 'number' 
-                        ? formData.location.lng 
-                        : (formData.location.lng?.lng || null)
+                    name: formData.location.name || "Location TBA",
+                    lat: formData.location.lat || null,
+                    lng: formData.location.lng || null
                 },
                 images: formData.images,
                 category: formData.category,
                 targetMoney: parseInt(formData.targetMoney) || 0,
             };
 
-            console.log("🔍 FormData location sebelum payload:", formData.location);
-            console.log("🔍 Type of formData.location.name:", typeof formData.location.name);
-            console.log("🔍 FormData.location.name value:", formData.location.name);
-            console.log("🔍 Payload location yang dikirim:", payload.location);
-
-
-            console.log("📤 Full payload:", payload);
+            console.log("Sending payload:", payload);
             
-            const response = await axios.post(
-                `${base}/api/activities`,
+            const response = await axios.put(
+                `${base}/api/activities/${id}`,
                 payload,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
             );
             
-            console.log("✅ Success response:", response.data);
+            console.log("Success:", response.data);
             Toastify({
-                text: "Activity created successfully!",
-                duration: 2000,
+                text: "Activity updated successfully!",
+                duration: 3000,
                 gravity: "top",
                 position: "right",
                 style: {
                     background: "#10b981",
                 },
             }).showToast();
-            navigate("/");
+            navigate(`/activity/${id}`);
         } catch (err) {
-            console.error("Error creating activity:", err);
+            console.error("Error updating activity:", err);
             console.error("Error response:", err?.response?.data);
             console.error("Error status:", err?.response?.status);
-            
-            // Check if error is 403 (Admin only)
-            if (err?.response?.status === 403) {
-                Toastify({
-                    text: "⛔ You are not an admin! Please login as admin to create activities.",
-                    duration: 2000,
-                    gravity: "top",
-                    position: "right",
-                    style: {
-                        background: "#ef4444",
-                    },
-                }).showToast();
-                setTimeout(() => navigate("/login"), 1500);
-            } else {
-                Toastify({
-                    text: err?.response?.data?.message || "Failed to create activity. Please try again.",
-                    duration: 2000,
-                    gravity: "top",
-                    position: "right",
-                    style: {
-                        background: "#ef4444",
-                    },
-                }).showToast();
-                setError(err?.response?.data?.message || err?.response?.data?.error || "Failed to create activity. Please try again.");
-            }
+            console.error("Full error response:", JSON.stringify(err?.response?.data, null, 2));
+            setError(err?.response?.data?.message || err?.response?.data?.error || "Failed to update activity. Please try again.");
         } finally {
             setLoading(false);
         }
     };
+
+    if (fetchLoading) {
+        return (
+            <div style={styles.centered}>
+                <div style={styles.spinner}></div>
+                <p style={styles.loadingText}>Loading activity...</p>
+            </div>
+        );
+    }
 
     return (
         <div style={styles.container}>
             <div style={styles.header}>
                 <div style={styles.headerContent}>
                     <h1 style={styles.logo} onClick={() => navigate("/")}>Care Connect</h1>
-                    <button onClick={() => navigate("/")} style={styles.backButton}>
-                        ← Back to Home
+                    <button onClick={() => navigate(`/activity/${id}`)} style={styles.backButton}>
+                        ← Back to Activity
                     </button>
                 </div>
             </div>
 
             <div style={styles.formContainer}>
                 <div style={styles.card}>
-                    <h2 style={styles.title}>Create New Activity</h2>
-                    <p style={styles.subtitle}>Fill in the details to create a new volunteer activity</p>
+                    <h2 style={styles.title}>Edit Activity</h2>
+                    <p style={styles.subtitle}>Update the details of your volunteer activity</p>
 
                     {error && <div style={styles.errorBanner}>{error}</div>}
 
@@ -217,7 +220,7 @@ export default function CreateActivity() {
                                 value={formData.title}
                                 onChange={handleChange}
                                 style={styles.input}
-                                placeholder="e.g., Beach Cleanup Day"
+                                placeholder="Enter activity title"
                                 required
                             />
                         </div>
@@ -268,35 +271,31 @@ export default function CreateActivity() {
 
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Location</label>
-                            <div style={styles.locationInfo}>
-                                {formData.location.name ? (
+                            {formData.location.name && formData.location.lat && formData.location.lng ? (
+                                <div style={styles.locationInfo}>
                                     <div style={styles.locationDisplay}>
-                                        <div>
-                                            <p style={styles.locationName}>📍 {formData.location.name}</p>
-                                            {formData.location.lat && formData.location.lng && (
-                                                <p style={styles.locationCoords}>
-                                                    Coordinates: {formData.location.lat.toFixed(6)}, {formData.location.lng.toFixed(6)}
-                                                </p>
-                                            )}
+                                        <div style={styles.locationName}>{formData.location.name}</div>
+                                        <div style={styles.locationCoords}>
+                                            📍 {formData.location.lat.toFixed(6)}, {formData.location.lng.toFixed(6)}
                                         </div>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setShowMapPicker(true)}
-                                            style={styles.changeLocationButton}
-                                        >
-                                            Change
-                                        </button>
                                     </div>
-                                ) : (
                                     <button 
                                         type="button" 
                                         onClick={() => setShowMapPicker(true)}
-                                        style={styles.pickLocationButton}
+                                        style={styles.changeLocationButton}
                                     >
-                                        📍 Pick Location on Map
+                                        Change Location
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            ) : (
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowMapPicker(true)}
+                                    style={styles.pickLocationButton}
+                                >
+                                    📍 Pick Location on Map
+                                </button>
+                            )}
                         </div>
 
                         <div style={styles.formGroup}>
@@ -309,20 +308,17 @@ export default function CreateActivity() {
                                 + Add Image URL
                             </button>
                             {formData.images.length > 0 && (
-                                <div style={styles.imageList}>
+                                <div style={styles.imagePreviewContainer}>
                                     {formData.images.map((img, index) => (
-                                        <div key={index} style={styles.imageItem}>
+                                        <div key={index} style={styles.imagePreviewItem}>
                                             <img src={img} alt={`Preview ${index + 1}`} style={styles.imagePreview} />
-                                            <div style={styles.imageInfo}>
-                                                <p style={styles.imageUrl}>{img}</p>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => handleImageRemove(index)}
-                                                    style={styles.removeButton}
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleImageRemove(index)}
+                                                style={styles.removeImageButton}
+                                            >
+                                                ×
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -332,7 +328,7 @@ export default function CreateActivity() {
                         <div style={styles.buttonGroup}>
                             <button 
                                 type="button" 
-                                onClick={() => navigate("/")} 
+                                onClick={() => navigate(`/activity/${id}`)} 
                                 style={styles.cancelButton}
                             >
                                 Cancel
@@ -342,7 +338,7 @@ export default function CreateActivity() {
                                 style={{ ...styles.submitButton, ...(loading ? styles.buttonDisabled : {}) }}
                                 disabled={loading}
                             >
-                                {loading ? "Creating..." : "Create Activity"}
+                                {loading ? "Updating..." : "Update Activity"}
                             </button>
                         </div>
                     </form>
@@ -358,14 +354,9 @@ export default function CreateActivity() {
                             type="url"
                             value={newImageUrl}
                             onChange={(e) => setNewImageUrl(e.target.value)}
-                            style={styles.modalInput}
                             placeholder="https://example.com/image.jpg"
+                            style={styles.modalInput}
                             autoFocus
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleImageSubmit();
-                                }
-                            }}
                         />
                         <div style={styles.modalButtons}>
                             <button 
@@ -380,16 +371,15 @@ export default function CreateActivity() {
                                 onClick={handleImageSubmit}
                                 style={styles.modalSubmitButton}
                             >
-                                Add Image
+                                Add
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Map Picker Modal */}
             {showMapPicker && (
-                <MapPicker
+                <MapPicker 
                     location={formData.location}
                     onLocationChange={handleLocationChange}
                     onClose={() => setShowMapPicker(false)}
@@ -402,161 +392,103 @@ export default function CreateActivity() {
 const styles = {
     container: {
         minHeight: '100vh',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#f3f4f6',
     },
     header: {
-        backgroundColor: '#FFFFFF',
-        borderBottom: '1px solid #E5E7EB',
+        backgroundColor: '#047857',
+        padding: '20px 0',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     },
     headerContent: {
-        maxWidth: 1280,
+        maxWidth: '1200px',
         margin: '0 auto',
-        padding: '16px 24px',
+        padding: '0 20px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
     logo: {
-        fontSize: 24,
-        fontWeight: 700,
-        color: '#047857',
-        margin: 0,
+        fontSize: '28px',
+        fontWeight: 'bold',
+        color: 'white',
         cursor: 'pointer',
+        margin: 0,
     },
     backButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        color: 'white',
+        border: 'none',
         padding: '10px 20px',
-        backgroundColor: '#FFFFFF',
-        color: '#6B7280',
-        border: '1px solid #E5E7EB',
-        borderRadius: 8,
-        fontWeight: 600,
+        borderRadius: '8px',
+        fontSize: '14px',
         cursor: 'pointer',
-        fontSize: 14,
+        fontWeight: '500',
+        transition: 'background-color 0.2s',
     },
     formContainer: {
-        maxWidth: 720,
-        margin: '0 auto',
-        padding: '40px 24px',
+        maxWidth: '800px',
+        margin: '40px auto',
+        padding: '0 20px',
     },
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: '32px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '40px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     },
     title: {
-        fontSize: 24,
-        fontWeight: 700,
-        color: '#111827',
-        margin: '0 0 8px 0',
+        fontSize: '28px',
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: '8px',
     },
     subtitle: {
-        fontSize: 14,
-        color: '#6B7280',
-        margin: '0 0 24px 0',
+        fontSize: '16px',
+        color: '#6b7280',
+        marginBottom: '30px',
     },
     errorBanner: {
+        backgroundColor: '#fee2e2',
+        color: '#991b1b',
         padding: '12px 16px',
-        backgroundColor: '#FEF2F2',
-        color: '#B91C1C',
-        borderRadius: 8,
-        marginBottom: 24,
-        fontSize: 14,
+        borderRadius: '8px',
+        marginBottom: '20px',
+        fontSize: '14px',
     },
     form: {
         display: 'flex',
         flexDirection: 'column',
-        gap: 20,
+        gap: '24px',
     },
     formGroup: {
         display: 'flex',
         flexDirection: 'column',
+        gap: '8px',
     },
     label: {
-        fontSize: 14,
-        fontWeight: 600,
+        fontSize: '14px',
+        fontWeight: '600',
         color: '#374151',
-        marginBottom: 8,
     },
     input: {
-        padding: '10px 12px',
-        border: '1px solid #E5E7EB',
-        borderRadius: 8,
-        fontSize: 14,
+        padding: '12px 16px',
+        fontSize: '14px',
+        border: '1px solid #d1d5db',
+        borderRadius: '8px',
         outline: 'none',
-        fontFamily: 'inherit',
+        transition: 'border-color 0.2s',
     },
     textarea: {
         resize: 'vertical',
-        minHeight: 120,
+        minHeight: '120px',
+        fontFamily: 'inherit',
     },
-    buttonGroup: {
+    locationGroup: {
         display: 'flex',
-        gap: 12,
-        marginTop: 8,
+        gap: '8px',
     },
-    cancelButton: {
-        flex: 1,
+    searchButton: {
         padding: '12px 24px',
-        backgroundColor: '#FFFFFF',
-        color: '#6B7280',
-        border: '1px solid #E5E7EB',
-        borderRadius: 8,
-        fontWeight: 600,
-        cursor: 'pointer',
-        fontSize: 14,
-    },
-    submitButton: {
-        flex: 1,
-        padding: '12px 24px',
-        backgroundColor: '#047857',
-        color: '#FFFFFF',
-        border: 'none',
-        borderRadius: 8,
-        fontWeight: 600,
-        cursor: 'pointer',
-        fontSize: 14,
-    },
-    buttonDisabled: {
-        opacity: 0.7,
-        cursor: 'not-allowed',
-    },
-    locationInfo: {
-        marginTop: '8px',
-    },
-    locationDisplay: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        backgroundColor: '#F0FDF4',
-        border: '1px solid #047857',
-        borderRadius: '8px',
-    },
-    locationName: {
-        margin: '0 0 4px 0',
-        fontSize: '14px',
-        fontWeight: '600',
-        color: '#047857',
-    },
-    locationCoords: {
-        margin: 0,
-        fontSize: '12px',
-        color: '#6B7280',
-    },
-    changeLocationButton: {
-        padding: '8px 16px',
-        backgroundColor: 'white',
-        color: '#047857',
-        border: '1px solid #047857',
-        borderRadius: '6px',
-        fontSize: '13px',
-        fontWeight: '600',
-        cursor: 'pointer',
-    },
-    pickLocationButton: {
-        width: '100%',
-        padding: '12px',
         backgroundColor: '#047857',
         color: 'white',
         border: 'none',
@@ -565,60 +497,113 @@ const styles = {
         fontWeight: '600',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
+        whiteSpace: 'nowrap',
+    },
+    locationGroup: {
+        display: 'flex',
+        gap: '8px',
+    },
+    previewButton: {
+        padding: '12px 24px',
+        backgroundColor: '#047857',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+        whiteSpace: 'nowrap',
+    },
+    mapContainer: {
+        marginTop: '12px',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        border: '1px solid #E5E7EB',
+    },
+    mapIframe: {
+        border: 'none',
     },
     addImageButton: {
         padding: '10px 16px',
-        backgroundColor: '#ECFDF5',
-        color: '#047857',
-        border: '1px solid #047857',
-        borderRadius: 8,
-        fontWeight: 600,
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '600',
         cursor: 'pointer',
-        fontSize: 14,
+        transition: 'background-color 0.2s',
+        alignSelf: 'flex-start',
     },
-    imageList: {
-        marginTop: 12,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
+    imagePreviewContainer: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+        gap: '12px',
+        marginTop: '12px',
     },
-    imageItem: {
-        display: 'flex',
-        gap: 12,
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        border: '1px solid #E5E7EB',
+    imagePreviewItem: {
+        position: 'relative',
+        aspectRatio: '1',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #d1d5db',
     },
     imagePreview: {
-        width: 100,
-        height: 100,
+        width: '100%',
+        height: '100%',
         objectFit: 'cover',
-        borderRadius: 6,
-        flexShrink: 0,
     },
-    imageInfo: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-    },
-    imageUrl: {
-        fontSize: 13,
-        color: '#6B7280',
-        margin: 0,
-        wordBreak: 'break-all',
-    },
-    removeButton: {
-        alignSelf: 'flex-start',
-        padding: '6px 12px',
-        backgroundColor: '#FEE2E2',
-        color: '#EF4444',
+    removeImageButton: {
+        position: 'absolute',
+        top: '4px',
+        right: '4px',
+        width: '28px',
+        height: '28px',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        color: 'white',
         border: 'none',
-        borderRadius: 6,
-        fontWeight: 600,
+        borderRadius: '50%',
+        fontSize: '20px',
         cursor: 'pointer',
-        fontSize: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 0,
+        lineHeight: 1,
+    },
+    buttonGroup: {
+        display: 'flex',
+        gap: '12px',
+        marginTop: '12px',
+    },
+    cancelButton: {
+        flex: 1,
+        padding: '14px',
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+    },
+    submitButton: {
+        flex: 1,
+        padding: '14px',
+        backgroundColor: '#047857',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+    },
+    buttonDisabled: {
+        backgroundColor: '#9ca3af',
+        cursor: 'not-allowed',
     },
     modalOverlay: {
         position: 'fixed',
@@ -633,52 +618,118 @@ const styles = {
         zIndex: 1000,
     },
     modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 24,
-        maxWidth: 500,
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
         width: '90%',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        maxWidth: '500px',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
     },
     modalTitle: {
-        fontSize: 20,
-        fontWeight: 700,
-        color: '#111827',
-        margin: '0 0 16px 0',
+        fontSize: '20px',
+        fontWeight: '600',
+        color: '#1f2937',
+        marginBottom: '16px',
     },
     modalInput: {
         width: '100%',
-        padding: '10px 12px',
-        border: '1px solid #E5E7EB',
-        borderRadius: 8,
-        fontSize: 14,
+        padding: '12px 16px',
+        fontSize: '14px',
+        border: '1px solid #d1d5db',
+        borderRadius: '8px',
         outline: 'none',
-        marginBottom: 20,
-        fontFamily: 'inherit',
+        marginBottom: '16px',
+        boxSizing: 'border-box',
     },
     modalButtons: {
         display: 'flex',
-        gap: 12,
-        justifyContent: 'flex-end',
+        gap: '12px',
     },
     modalCancelButton: {
-        padding: '10px 20px',
-        backgroundColor: '#FFFFFF',
-        color: '#6B7280',
-        border: '1px solid #E5E7EB',
-        borderRadius: 8,
-        fontWeight: 600,
+        flex: 1,
+        padding: '12px',
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '600',
         cursor: 'pointer',
-        fontSize: 14,
     },
     modalSubmitButton: {
-        padding: '10px 20px',
+        flex: 1,
+        padding: '12px',
         backgroundColor: '#047857',
-        color: '#FFFFFF',
+        color: 'white',
         border: 'none',
-        borderRadius: 8,
-        fontWeight: 600,
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '600',
         cursor: 'pointer',
-        fontSize: 14,
+    },
+    locationInfo: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+    },
+    locationDisplay: {
+        padding: '16px',
+        backgroundColor: '#f0fdf4',
+        border: '1px solid #bbf7d0',
+        borderRadius: '8px',
+    },
+    locationName: {
+        fontSize: '16px',
+        fontWeight: '500',
+        color: '#047857',
+        marginBottom: '8px',
+    },
+    locationCoords: {
+        fontSize: '14px',
+        color: '#059669',
+        fontFamily: 'monospace',
+    },
+    changeLocationButton: {
+        padding: '10px 16px',
+        backgroundColor: '#047857',
+        color: 'white',
+        border: 'none',
+        borderRadius: '6px',
+        fontSize: '14px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+    },
+    pickLocationButton: {
+        width: '100%',
+        padding: '12px',
+        backgroundColor: '#047857',
+        color: 'white',
+        border: 'none',
+        borderRadius: '6px',
+        fontSize: '16px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+    },
+    centered: {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#f3f4f6',
+    },
+    spinner: {
+        width: '50px',
+        height: '50px',
+        border: '5px solid #e5e7eb',
+        borderTop: '5px solid #047857',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+    },
+    loadingText: {
+        marginTop: '16px',
+        color: '#6b7280',
+        fontSize: '16px',
     },
 };
+
