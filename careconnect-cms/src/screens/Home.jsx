@@ -15,7 +15,7 @@ export default function Home() {
         // Check if user is logged in
         const token = localStorage.getItem("access_token");
         setIsLoggedIn(!!token);
-        
+
         // Fetch activities
         fetchActivities();
     }, []);
@@ -23,7 +23,10 @@ export default function Home() {
     const fetchActivities = async () => {
         try {
             const res = await axios.get(`${base}/api/activities`);
-            setActivities(res.data.data || res.data || []);
+            const activitiesData = res.data.data || res.data || [];
+            console.log("📊 Activities from backend:", activitiesData);
+            console.log("📊 First activity location:", activitiesData[0]?.location);
+            setActivities(activitiesData);
         } catch (err) {
             console.error("Failed to fetch activities:", err);
             setError("Failed to load activities. Please try again later.");
@@ -48,6 +51,10 @@ export default function Home() {
         );
     }
 
+
+    // console.log(activities);
+    // return null
+    
     return (
         <div style={styles.container}>
             {/* Header */}
@@ -57,8 +64,8 @@ export default function Home() {
                     <div style={styles.headerActions}>
                         {isLoggedIn ? (
                             <>
-                                <button 
-                                    onClick={() => navigate("/create-activity")} 
+                                <button
+                                    onClick={() => navigate("/create-activity")}
                                     style={styles.addButton}
                                 >
                                     + Add Activity
@@ -100,12 +107,12 @@ export default function Home() {
                 {activities.length === 0 ? (
                     <div style={styles.emptyState}>
                         <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 11H15M12 8V14M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M9 11H15M12 8V14M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         <h3 style={styles.emptyTitle}>No activities yet</h3>
                         <p style={styles.emptyText}>
-                            {isLoggedIn 
-                                ? "Create your first activity to get started!" 
+                            {isLoggedIn
+                                ? "Create your first activity to get started!"
                                 : "Check back later for upcoming activities"}
                         </p>
                     </div>
@@ -115,8 +122,8 @@ export default function Home() {
                             <div key={activity.id || activity._id} style={styles.card}>
                                 {activity.imageUrl && (
                                     <div style={styles.cardImage}>
-                                        <img 
-                                            src={activity.imageUrl} 
+                                        <img
+                                            src={activity.imageUrl}
                                             alt={activity.name}
                                             style={styles.image}
                                         />
@@ -124,16 +131,22 @@ export default function Home() {
                                 )}
                                 <div style={styles.cardContent}>
                                     <h3 style={styles.cardTitle}>{activity.name}</h3>
-                                    <p style={styles.cardDescription}>
-                                        {activity.description?.substring(0, 120)}
-                                        {activity.description?.length > 120 ? "..." : ""}
-                                    </p>
+                                    {activity.title && (
+                                        <p style={styles.cardSubtitle}>{activity.title}</p>
+                                    )}
+                                    {activity.category && (
+                                        <div style={styles.categoryBadge}>
+                                            {activity.category}
+                                        </div>
+                                    )}
                                     <div style={styles.cardMeta}>
-                                        {activity.location && (
+                                        {(typeof activity.location === 'string' 
+                                            ? activity.location 
+                                            : activity.location?.name) && (
                                             <div style={styles.metaItem}>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                    <path d="M12 22C12 22 20 16 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 16 12 22 12 22Z" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                    <path d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    <path d="M12 22C12 22 20 16 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 16 12 22 12 22Z" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 </svg>
                                                 <span style={styles.metaText}>
                                                     {typeof activity.location === 'string' 
@@ -145,8 +158,8 @@ export default function Home() {
                                         {activity.date && (
                                             <div style={styles.metaItem}>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <rect x="3" y="6" width="18" height="15" rx="2" stroke="#6B7280" strokeWidth="2"/>
-                                                    <path d="M3 10H21M8 3V6M16 3V6" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+                                                    <rect x="3" y="6" width="18" height="15" rx="2" stroke="#6B7280" strokeWidth="2" />
+                                                    <path d="M3 10H21M8 3V6M16 3V6" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" />
                                                 </svg>
                                                 <span style={styles.metaText}>
                                                     {new Date(activity.date).toLocaleDateString('id-ID')}
@@ -157,17 +170,17 @@ export default function Home() {
                                     <div style={styles.cardFooter}>
                                         <div style={styles.volunteerInfo}>
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                             </svg>
                                             <span style={styles.volunteerCount}>
                                                 {activity.volunteers?.length || 0} volunteers
                                             </span>
                                         </div>
-                                        <button 
-                                            onClick={() => navigate(`/activity/${activity.id || activity._id}`)} 
+                                        <button
+                                            onClick={() => navigate(`/activity/${activity.id || activity._id}`)}
                                             style={styles.viewButton}
                                         >
                                             View Details
@@ -358,6 +371,22 @@ const styles = {
         fontWeight: 700,
         color: '#111827',
         margin: '0 0 8px 0',
+    },
+    cardSubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 1.6,
+        margin: '0 0 12px 0',
+    },
+    categoryBadge: {
+        display: 'inline-block',
+        padding: '4px 12px',
+        backgroundColor: '#ECFDF5',
+        color: '#047857',
+        borderRadius: 16,
+        fontSize: 12,
+        fontWeight: 600,
+        marginBottom: 16,
     },
     cardDescription: {
         fontSize: 14,

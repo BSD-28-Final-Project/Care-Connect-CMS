@@ -3,6 +3,7 @@ import Home from "../screens/Home";
 import Login from "../screens/Login";
 import CreateActivity from "../screens/CreateActivity";
 import ActivityDetail from "../screens/ActivityDetail";
+import EditActivity from "../screens/EditActivity";
 
 const router = createBrowserRouter([
     {
@@ -20,6 +21,10 @@ const router = createBrowserRouter([
     {
         path: "/activity/:id",
         element: <ActivityDetail />,
+    },
+    {
+        path: "/edit-activity/:id",
+        element: <EditActivity />,
     },
 ]);
 
